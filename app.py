@@ -8,6 +8,7 @@ import babel
 from flask import Flask, render_template, request, Response, flash, redirect, url_for
 from flask_moment import Moment
 from flask_sqlalchemy import SQLAlchemy
+from flask_migrate import Migrate, MigrateCommand
 import logging
 from logging import Formatter, FileHandler
 from flask_wtf import Form
@@ -20,6 +21,7 @@ app = Flask(__name__)
 moment = Moment(app)
 app.config.from_object('config')
 db = SQLAlchemy(app)
+migrate = Migrate(app, db)
 
 # TODO: connect to a local postgresql database
 
@@ -39,6 +41,10 @@ class Venue(db.Model):
     image_link = db.Column(db.String(500))
     facebook_link = db.Column(db.String(120))
 
+    genres = db.Column(db.PickleType())
+    website = db.Column(db.String())
+    seeking_talent = db.Column(db.Boolean(),default=False)
+    shows = db.relationship('Show', backref='venue', lazy=True)
     # TODO: implement any missing fields, as a database migration using Flask-Migrate
 
 class Artist(db.Model):
@@ -49,11 +55,22 @@ class Artist(db.Model):
     city = db.Column(db.String(120))
     state = db.Column(db.String(120))
     phone = db.Column(db.String(120))
-    genres = db.Column(db.String(120))
+    genres = db.Column(db.PickleType())
     image_link = db.Column(db.String(500))
     facebook_link = db.Column(db.String(120))
-
+    seeking_venue = db.Column(db.Boolean(),default=False)
+    seeking_description = db.Column(db.String())
+    shows = db.relationship('Show', backref='artist', lazy=True)
     # TODO: implement any missing fields, as a database migration using Flask-Migrate
+
+class Show(db.Model):
+    __tablename__ = 'Show'
+    id = db.Column(db.Integer, primary_key=True)
+    venue_id = db.Column(db.Integer, db.ForeignKey('Venue.id'),nullable=False)
+    artist_id = db.Column(db.Integer, db.ForeignKey('Artist.id'),nullable=False)
+    start_time = db.Column(db.DateTime, nullable=False)
+    
+      
 
 # TODO Implement Show and Artist models, and complete all model relationships and properties, as a database migration.
 
@@ -67,7 +84,7 @@ def format_datetime(value, format='medium'):
       format="EEEE MMMM, d, y 'at' h:mma"
   elif format == 'medium':
       format="EE MM, dd, y h:mma"
-  return babel.dates.format_datetime(date, format)
+  return babel.dates.format_datetime(date, format,locale='en_US')
 
 app.jinja_env.filters['datetime'] = format_datetime
 
@@ -87,6 +104,9 @@ def index():
 def venues():
   # TODO: replace with real venues data.
   #       num_shows should be aggregated based on number of upcoming shows per venue.
+  # datalist = []
+  # --> data from database then put it into the the datalist 
+  # datalist has venue list 
   data=[{
     "city": "San Francisco",
     "state": "CA",
